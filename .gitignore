@@ -1,0 +1,32 @@
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environments and local configuration
+.venv/
+venv/
+.env
+.env.*
+
+# Packaging artifacts
+build/
+dist/
+*.egg-info/
+
+# Coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+
+# Experiment outputs
+outputs/*
+!outputs/.gitkeep
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
