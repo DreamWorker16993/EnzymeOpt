@@ -36,4 +36,3 @@ python -m pytest
 ## Current status
 
 The repository currently contains the tested project skeleton. Scientific functionality will be added milestone by milestone.
-
