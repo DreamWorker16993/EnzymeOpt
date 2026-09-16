@@ -37,7 +37,9 @@ python -m pytest
 
 Milestones 1–8 provide configuration, reproducible simulation, nonlinear fitting,
 random, log-spaced, and local D-optimal selection, and a sequential experiment
-runner. Monte Carlo aggregation is still planned.
+runner. Monte Carlo aggregation is available through
+`enzymeopt.monte_carlo.run_monte_carlo`. See [MILESTONE9_REPORT.md](MILESTONE9_REPORT.md)
+for a reproducible comparison and metric denominator conventions.
 
 ## Run a sequential experiment
 
