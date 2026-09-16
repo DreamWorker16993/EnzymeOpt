@@ -11,6 +11,8 @@ from enzymeopt.designs import (
     generate_design,
 )
 from enzymeopt.randomness import make_rng
+from enzymeopt.designs import DOptimalDesign
+from enzymeopt.information import fisher_information
 
 
 def test_random_design_samples_uniformly_in_log_space() -> None:
@@ -192,3 +194,69 @@ def test_generated_design_is_read_only() -> None:
 
     with pytest.raises(ValueError, match="read-only"):
         design[0] = exp(log(1.0))
+
+
+def test_d_optimal_matches_independent_candidate_enumeration():
+    state = DesignState(0.05, 20, 8, (0.05, 1., 20.),
+                        tuple(np.geomspace(0.05, 20, 200)))
+    strategy = DOptimalDesign(km=1.2, vmax=2, noise_std=0.05)
+    expected = []
+    for candidate in state.candidate_concentrations:
+        s = np.array((*state.selected_concentrations, candidate))
+        jac = np.column_stack((-2*s/(1.2+s)**2, s/(1.2+s))) / 0.05
+        expected.append(np.linalg.slogdet(jac.T @ jac)[1])
+    np.testing.assert_allclose(strategy.score_candidates(state), expected)
+    assert strategy.select_next(state) == state.candidate_concentrations[np.argmax(expected)]
+    np.testing.assert_allclose(strategy.current_information(state),
+        fisher_information(state.selected_concentrations, km=1.2, vmax=2, noise_std=0.05))
+
+
+def test_d_optimal_singular_history_can_be_resolved():
+    state = DesignState(0.1, 10, 4, (1., 1.), (1., 10.))
+    assert DOptimalDesign(1, 1).select_next(state) == 10
+
+
+def test_d_optimal_rejects_uninformative_and_missing_candidates():
+    for state in [DesignState(0.1, 10, 4, (), (1., 2.)),
+                  DesignState(0.1, 10, 4, (1., 1.), (1.,)),
+                  DesignState(0.1, 10, 4)]:
+        with pytest.raises(ValueError):
+            DOptimalDesign(1, 1).select_next(state)
+
+
+def test_d_optimal_ties_choose_smallest_concentration(monkeypatch):
+    monkeypatch.setattr(DOptimalDesign, 'score_candidates', lambda self, state: (2., 2., 1.))
+    assert DOptimalDesign(1, 1).select_next(DesignState(0.1, 10, 4, (), (3., 1., 2.))) == 1
+
+
+def test_d_optimal_noise_scaling_rng_and_candidate_order():
+    state = DesignState(0.05, 20, 6, (0.05, 1., 20.), (0.1, 1., 10., 20.))
+    rng = make_rng(123)
+    control = make_rng(123)
+    selected = DOptimalDesign(1, 1).select_next(state, rng=rng)
+    assert DOptimalDesign(1, 1, noise_std=0.05).select_next(state) == selected
+    reversed_state = DesignState(0.05, 20, 6, state.selected_concentrations,
+                                 tuple(reversed(state.candidate_concentrations)))
+    assert DOptimalDesign(1, 1).select_next(reversed_state) == selected
+    np.testing.assert_array_equal(rng.normal(size=10), control.normal(size=10))
+
+
+def test_d_optimal_can_repeat_existing_point_and_rejects_complete_state():
+    state = DesignState(0.1, 10, 4, (0.1, 10.), (10.,))
+    assert DOptimalDesign(1, 1).select_next(state) == 10
+    with pytest.raises(ValueError, match='complete'):
+        DOptimalDesign(1, 1).select_next(DesignState(0.1, 10, 2, (0.1, 10.), (1.,)))
+
+
+def test_d_optimal_updates_with_current_parameter_estimate():
+    state = DesignState(0.05, 20, 8, (0.05, 1., 20.),
+                        tuple(np.geomspace(0.05, 20, 200)))
+    assert DOptimalDesign(0.2, 1).select_next(state) != DOptimalDesign(5, 1).select_next(state)
+
+
+@pytest.mark.parametrize('kwargs', [{'km': 0}, {'vmax': -1}, {'noise_std': 0}])
+def test_d_optimal_rejects_invalid_estimates(kwargs):
+    values = dict(km=1, vmax=1, noise_std=1)
+    values.update(kwargs)
+    with pytest.raises(ValueError):
+        DOptimalDesign(**values)

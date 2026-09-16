@@ -35,4 +35,45 @@ python -m pytest
 
 ## Current status
 
-The repository currently contains the tested project skeleton. Scientific functionality will be added milestone by milestone.
+Milestones 1–7 provide configuration, reproducible simulation, nonlinear fitting,
+and random, log-spaced, and local D-optimal selection. The experiment runner and
+Monte Carlo comparison are still planned.
+
+## Local D-optimal selection
+
+For independent Gaussian noise with standard deviation `sigma`, the information
+matrix in natural `(KM, Vmax)` coordinates is `sum(g(S) g(S).T) / sigma**2`,
+where `g` is the model's parameter gradient. `DOptimalDesign` scores each candidate
+using the log determinant of the accumulated information after adding that point.
+Larger determinants correspond to smaller approximate joint uncertainty regions.
+This is a greedy, local criterion conditional on the supplied parameter estimate.
+
+```python
+import numpy as np
+from enzymeopt.designs import DesignState, DOptimalDesign
+
+state = DesignState(
+    substrate_min=0.05,
+    substrate_max=20.0,
+    measurement_budget=8,
+    selected_concentrations=(0.05, 1.0, 20.0),
+    candidate_concentrations=tuple(np.geomspace(0.05, 20.0, 200)),
+)
+# Supply current fitted estimates, not simulation truth.
+strategy = DOptimalDesign(km=1.2, vmax=0.9, noise_std=0.05)
+next_concentration = strategy.select_next(state)
+scores = strategy.score_candidates(state)
+```
+
+After measuring and refitting, construct a new strategy with the updated estimates.
+The selection class does not itself simulate observations or fit parameters;
+`generate_design` therefore uses a fixed estimate throughout its loop. Candidates
+must be provided explicitly. Repeated concentrations are allowed, exact ties choose
+the lowest concentration, and no random numbers are consumed.
+
+Singular or numerically unresolved information gives a score of negative infinity.
+If every augmented design is unresolved, selection raises a diagnostic error rather
+than adding an undocumented prior or regularization. The log determinant is computed
+from scaled eigenvalues to avoid determinant overflow. For noise-free simulations,
+use `noise_std=1` for design ranking: zero-variance Fisher information is undefined,
+but a shared positive variance does not change candidate ordering.
