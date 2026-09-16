@@ -2,6 +2,7 @@ import numpy as np
 import pytest
 
 from enzymeopt.randomness import SeedManager, derive_seed, make_rng
+from enzymeopt.simulation import simulate_dataset
 
 
 def test_same_master_seed_and_labels_reproduce_sequence() -> None:
@@ -47,3 +48,23 @@ def test_invalid_master_seed_is_rejected(seed: object) -> None:
 def test_invalid_seed_label_is_rejected() -> None:
     with pytest.raises(TypeError, match="strings or integers"):
         derive_seed(1, 1.5)  # type: ignore[arg-type]
+
+
+def test_synthetic_dataset_is_reproducible_from_named_seed() -> None:
+    concentrations = np.geomspace(0.05, 20.0, 25)
+    first = simulate_dataset(
+        concentrations,
+        true_km=1.0,
+        true_vmax=1.0,
+        noise_std=0.05,
+        rng=make_rng(99, "replicate", 4, "random", "noise"),
+    )
+    second = simulate_dataset(
+        concentrations,
+        true_km=1.0,
+        true_vmax=1.0,
+        noise_std=0.05,
+        rng=make_rng(99, "replicate", 4, "random", "noise"),
+    )
+
+    np.testing.assert_array_equal(first.observed_rates, second.observed_rates)
