@@ -35,9 +35,41 @@ python -m pytest
 
 ## Current status
 
-Milestones 1–7 provide configuration, reproducible simulation, nonlinear fitting,
-and random, log-spaced, and local D-optimal selection. The experiment runner and
-Monte Carlo comparison are still planned.
+Milestones 1–8 provide configuration, reproducible simulation, nonlinear fitting,
+random, log-spaced, and local D-optimal selection, and a sequential experiment
+runner. Monte Carlo aggregation is still planned.
+
+## Run a sequential experiment
+
+```python
+from enzymeopt.config import ExperimentConfig
+from enzymeopt.experiment import run_experiment
+
+config = ExperimentConfig(seed=42)
+result = run_experiment(config, strategy="d_optimal", measurement_budget=8)
+for step in result.steps:
+    if step.fit is not None:
+        print(step.measurement_number, step.observation.concentration,
+              step.fit.km, step.fit.vmax, step.fit.message)
+print(result.succeeded, result.message)
+```
+
+Random and D-optimal start at the lower bound, geometric midpoint, and upper
+bound. Log-spaced uses its full budget-specific grid. Fitting starts after
+measurement 3 and uses all observations after every subsequent measurement.
+D-optimal refreshes its parameter estimates from the immediately preceding fit.
+Simulation truth is not passed to the fitter or selection strategy.
+
+A failed fit stops any strategy with its observations and failed fit retained.
+A failed selection stops before the next measurement. A completed run with a
+converged final fit is successful even if its confidence intervals are unavailable;
+inspect the fit diagnostics separately. Each step records its selection method.
+
+The result's seed is the master seed. Reproduce a run using the original config,
+strategy, replicate index, budget, and fit options. Noise streams are paired across
+strategies for a given replicate and budget; random selection has a separate stream.
+Budgets have independent streams, so separate budget runs are not trajectory prefixes.
+The runner does not aggregate replicates or apply a precision-based stopping rule.
 
 ## Local D-optimal selection
 

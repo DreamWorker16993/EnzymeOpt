@@ -3,6 +3,8 @@ import pytest
 
 from enzymeopt.randomness import SeedManager, derive_seed, make_rng
 from enzymeopt.simulation import simulate_dataset
+from enzymeopt.config import ExperimentConfig
+from enzymeopt.experiment import run_experiment
 
 
 def test_same_master_seed_and_labels_reproduce_sequence() -> None:
@@ -68,3 +70,18 @@ def test_synthetic_dataset_is_reproducible_from_named_seed() -> None:
     )
 
     np.testing.assert_array_equal(first.observed_rates, second.observed_rates)
+
+
+def test_experiment_order_independence_and_paired_noise():
+    config = ExperimentConfig(seed=42)
+    forward = {s: run_experiment(config, strategy=s, measurement_budget=6)
+               for s in config.strategies}
+    reverse = {s: run_experiment(config, strategy=s, measurement_budget=6)
+               for s in reversed(config.strategies)}
+    assert forward == reverse
+    residual_noise = []
+    for result in forward.values():
+        assert result.succeeded, result.message
+        residual_noise.append([s.observation.rate - s.observation.expected_rate
+                               for s in result.steps])
+    np.testing.assert_allclose(residual_noise, np.tile(residual_noise[0], (3, 1)), atol=1e-15)

@@ -172,6 +172,7 @@ class ExperimentStep:
     measurement_number: int
     observation: Observation
     fit: FitResult | None = None
+    selection_message: str = ""
 
     def __post_init__(self) -> None:
         if (
@@ -184,12 +185,15 @@ class ExperimentStep:
             raise TypeError("observation must be an Observation")
         if self.fit is not None and not isinstance(self.fit, FitResult):
             raise TypeError("fit must be a FitResult")
+        if not isinstance(self.selection_message, str):
+            raise TypeError("selection_message must be a string")
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "measurement_number": int(self.measurement_number),
             "observation": self.observation.to_dict(),
             "fit": None if self.fit is None else self.fit.to_dict(),
+            "selection_message": self.selection_message,
         }
 
     @classmethod
