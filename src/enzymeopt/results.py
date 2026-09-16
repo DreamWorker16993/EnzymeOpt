@@ -57,7 +57,12 @@ class ConfidenceInterval:
 
 @dataclass(frozen=True, slots=True)
 class FitResult:
-    """Parameter estimates or a structured fitting failure."""
+    """Parameter estimates, uncertainty diagnostics, or a fitting failure.
+
+    ``residuals`` are predicted minus observed rates. ``jacobian`` contains
+    derivatives of those residuals with respect to ``(log(km), log(vmax))``.
+    ``covariance`` is reported in the natural ``(km, vmax)`` parameter space.
+    """
 
     converged: bool
     km: float | None = None
@@ -65,6 +70,12 @@ class FitResult:
     km_interval: ConfidenceInterval | None = None
     vmax_interval: ConfidenceInterval | None = None
     residual_sum_squares: float | None = None
+    residuals: tuple[float, ...] | None = None
+    jacobian: tuple[tuple[float, float], ...] | None = None
+    covariance: tuple[tuple[float, float], tuple[float, float]] | None = None
+    jacobian_rank: int | None = None
+    jacobian_condition_number: float | None = None
+    evaluations: int | None = None
     message: str = ""
 
     def __post_init__(self) -> None:
@@ -74,9 +85,15 @@ class FitResult:
             raise ValueError("converged fits require both km and vmax")
         if not self.converged and any(
             value is not None
-            for value in (self.km, self.vmax, self.km_interval, self.vmax_interval)
+            for value in (
+                self.km,
+                self.vmax,
+                self.km_interval,
+                self.vmax_interval,
+                self.covariance,
+            )
         ):
-            raise ValueError("failed fits must not contain parameter estimates or intervals")
+            raise ValueError("failed fits must not contain estimates, intervals, or covariance")
         for name in ("km", "vmax"):
             value = getattr(self, name)
             if value is not None:
@@ -87,6 +104,45 @@ class FitResult:
                 raise TypeError(f"{name} must be a ConfidenceInterval")
         if self.residual_sum_squares is not None:
             _require_finite("residual_sum_squares", self.residual_sum_squares, minimum=0.0)
+        if self.residuals is not None:
+            _require_numeric_tuple("residuals", self.residuals)
+        if self.jacobian is not None:
+            if not isinstance(self.jacobian, tuple) or any(
+                not isinstance(row, tuple) or len(row) != 2 for row in self.jacobian
+            ):
+                raise TypeError("jacobian must be a tuple of two-column tuples")
+            for row in self.jacobian:
+                _require_numeric_tuple("jacobian row", row)
+        if self.covariance is not None:
+            if (
+                not isinstance(self.covariance, tuple)
+                or len(self.covariance) != 2
+                or any(not isinstance(row, tuple) or len(row) != 2 for row in self.covariance)
+            ):
+                raise TypeError("covariance must be a 2 by 2 tuple")
+            for row in self.covariance:
+                _require_numeric_tuple("covariance row", row)
+        if self.jacobian_rank is not None:
+            if (
+                isinstance(self.jacobian_rank, bool)
+                or not isinstance(self.jacobian_rank, Integral)
+                or not 0 <= self.jacobian_rank <= 2
+            ):
+                raise ValueError("jacobian_rank must be an integer between 0 and 2")
+        if self.jacobian_condition_number is not None:
+            _require_finite(
+                "jacobian_condition_number",
+                self.jacobian_condition_number,
+                minimum=0.0,
+                strict_minimum=True,
+            )
+        if self.evaluations is not None:
+            if (
+                isinstance(self.evaluations, bool)
+                or not isinstance(self.evaluations, Integral)
+                or self.evaluations < 1
+            ):
+                raise ValueError("evaluations must be a positive integer")
         if not isinstance(self.message, str):
             raise TypeError("message must be a string")
 
@@ -100,6 +156,12 @@ class FitResult:
         for name in ("km_interval", "vmax_interval"):
             if values.get(name) is not None:
                 values[name] = ConfidenceInterval.from_dict(values[name])
+        if values.get("residuals") is not None:
+            values["residuals"] = tuple(values["residuals"])
+        if values.get("jacobian") is not None:
+            values["jacobian"] = tuple(tuple(row) for row in values["jacobian"])
+        if values.get("covariance") is not None:
+            values["covariance"] = tuple(tuple(row) for row in values["covariance"])
         return cls(**values)
 
 
@@ -201,3 +263,10 @@ def _require_finite(
         if invalid:
             comparison = "greater than" if strict_minimum else "greater than or equal to"
             raise ValueError(f"{name} must be {comparison} {minimum}")
+
+
+def _require_numeric_tuple(name: str, values: object) -> None:
+    if not isinstance(values, tuple):
+        raise TypeError(f"{name} must be a tuple")
+    for value in values:
+        _require_finite(name, value)
