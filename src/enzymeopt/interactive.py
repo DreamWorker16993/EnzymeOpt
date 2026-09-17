@@ -124,6 +124,7 @@ class InteractiveSession:
         report = {
             "measurement_count": len(self._concentrations),
             "fit": self._fit.to_dict(),
+            "parameter_uncertainty": _parameter_uncertainty(self._fit),
             "concentration_range": [self.options.substrate_min, self.options.substrate_max],
             "files": {"raw_data": "raw_data.csv", "fit_curve": "fit_curve.csv", "plot": "fit_curve.png"},
         }
@@ -177,6 +178,15 @@ def run_interactive_session(
             assert fit is not None and fit.km is not None and fit.vmax is not None
             output_fn(f"Vmax estimate: {fit.vmax:.6g}")
             output_fn(f"KM estimate: {fit.km:.6g}")
+            for label, uncertainty in _parameter_uncertainty(fit).items():
+                if uncertainty["standard_error"] is None:
+                    output_fn(f"{label} uncertainty: unavailable ({fit.message})")
+                else:
+                    output_fn(
+                        f"{label} standard error: {uncertainty['standard_error']:.6g}; "
+                        f"95% CI: [{uncertainty['confidence_interval'][0]:.6g}, "
+                        f"{uncertainty['confidence_interval'][1]:.6g}]"
+                    )
             output_fn(f"Report written to: {destination.resolve()}")
             return 0
         try:
@@ -239,6 +249,25 @@ def _write_plot(path: Path, raw_x: list[float], raw_y: list[float], curve_x: np.
     plt.close(figure)
 
 
+def _parameter_uncertainty(fit: FitResult) -> dict[str, dict[str, float | list[float] | None]]:
+    """Return report-ready local standard errors and confidence-interval widths."""
+
+    values = (("Vmax", 1, fit.vmax_interval), ("KM", 0, fit.km_interval))
+    report: dict[str, dict[str, float | list[float] | None]] = {}
+    for label, index, interval in values:
+        standard_error = None
+        if fit.covariance is not None:
+            standard_error = float(np.sqrt(fit.covariance[index][index]))
+        confidence_interval = None if interval is None else [interval.lower, interval.upper]
+        interval_width = None if interval is None else interval.upper - interval.lower
+        report[label] = {
+            "standard_error": standard_error,
+            "confidence_interval": confidence_interval,
+            "confidence_interval_width": interval_width,
+        }
+    return report
+
+
 def _markdown_report(report: dict[str, object], fit: FitResult) -> str:
     assert fit.km is not None and fit.vmax is not None
     lines = [
@@ -249,10 +278,17 @@ def _markdown_report(report: dict[str, object], fit: FitResult) -> str:
         f"KM estimate: {fit.km:.8g}",
         f"Fit status: {fit.message}",
     ]
-    for label, interval in (("Vmax", fit.vmax_interval), ("KM", fit.km_interval)):
-        if interval is None:
-            lines.append(f"{label} 95% confidence interval: unavailable")
+    uncertainty = _parameter_uncertainty(fit)
+    for label, values in uncertainty.items():
+        standard_error = values["standard_error"]
+        interval = values["confidence_interval"]
+        if standard_error is None or interval is None:
+            lines.append(f"{label} uncertainty: unavailable")
         else:
-            lines.append(f"{label} 95% confidence interval: [{interval.lower:.8g}, {interval.upper:.8g}]")
+            lines.extend([
+                f"{label} standard error: {standard_error:.8g}",
+                f"{label} 95% confidence interval: [{interval[0]:.8g}, {interval[1]:.8g}]",
+                f"{label} 95% confidence interval width: {values['confidence_interval_width']:.8g}",
+            ])
     lines.extend(["", "Files: raw_data.csv, fit_curve.csv, fit_curve.png, report.json.", ""])
     return "\n".join(lines)

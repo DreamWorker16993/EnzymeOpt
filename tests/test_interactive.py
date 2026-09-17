@@ -46,6 +46,11 @@ def test_report_contains_raw_data_curve_and_plot(tmp_path) -> None:
     report = json.loads((destination / "report.json").read_text(encoding="utf-8"))
     assert report["measurement_count"] == 5
     assert report["fit"]["km"] == pytest.approx(1.0)
+    assert report["parameter_uncertainty"]["Vmax"]["standard_error"] == pytest.approx(0.0)
+    assert report["parameter_uncertainty"]["KM"]["confidence_interval_width"] == pytest.approx(0.0)
+    markdown = (destination / "report.md").read_text(encoding="utf-8")
+    assert "Vmax standard error" in markdown
+    assert "KM 95% confidence interval width" in markdown
     assert len((destination / "raw_data.csv").read_text(encoding="utf-8").splitlines()) == 6
     assert len((destination / "fit_curve.csv").read_text(encoding="utf-8").splitlines()) == 301
     assert (destination / "fit_curve.png").read_bytes().startswith(b"\x89PNG")
@@ -61,6 +66,7 @@ def test_interactive_dialogue_writes_report(tmp_path) -> None:
     assert status == 0
     assert any("Suggested next concentration" in message for message in messages)
     assert any("Vmax estimate" in message for message in messages)
+    assert any("KM standard error" in message for message in messages)
     assert (tmp_path / "report" / "report.md").exists()
 
 

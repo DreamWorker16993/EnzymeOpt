@@ -127,7 +127,10 @@ D-optimal next concentration. Measure at that concentration, enter the new pair,
 repeat. Enter `report` when you want to stop: it prints the `Vmax` and `KM` estimates
 and writes `report.md`, `report.json`, `raw_data.csv`, `fit_curve.csv`, and
 `fit_curve.png` to the output directory. The plot overlays your raw measurements with
-the fitted curve. Enter `help` for a reminder or `quit` to end without a report.
+the fitted curve. The report includes Vmax and KM point estimates, local standard
+errors, 95% confidence intervals, and confidence-interval widths. For real data,
+these uncertainty values describe estimation error; relative error needs an external
+reference value. Enter `help` for a reminder or `quit` to end without a report.
 
 ## Mathematical and simulation assumptions
 
