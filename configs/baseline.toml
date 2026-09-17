@@ -1,0 +1,11 @@
+[experiment]
+true_km = 1.0
+true_vmax = 1.0
+noise_std = 0.05
+substrate_min = 0.05
+substrate_max = 20.0
+candidate_count = 200
+measurement_budgets = [3, 4, 6, 8, 12, 16, 24]
+replicates = 1000
+strategies = ["random", "log_spaced", "d_optimal"]
+seed = 20260916

@@ -2,7 +2,7 @@
 
 EnzymeOpt is a Python project for comparing experimental-design strategies for Michaelis–Menten parameter estimation. Its goal is to estimate `KM` and `Vmax` with as few substrate-concentration measurements as possible.
 
-The first release will provide:
+The first release provides:
 
 - reproducible synthetic enzyme-kinetics data with Gaussian noise;
 - nonlinear least-squares estimation of `KM` and `Vmax`;
@@ -33,13 +33,51 @@ python -m pip install -e ".[dev]"
 python -m pytest
 ```
 
-## Current status
+## Run the baseline benchmark
 
-Milestones 1–8 provide configuration, reproducible simulation, nonlinear fitting,
-random, log-spaced, and local D-optimal selection, and a sequential experiment
-runner. Monte Carlo aggregation is available through
-`enzymeopt.monte_carlo.run_monte_carlo`. See [MILESTONE9_REPORT.md](MILESTONE9_REPORT.md)
-for a reproducible comparison and metric denominator conventions.
+The checked-in configuration runs 1,000 Monte Carlo replicates for every strategy
+and measurement budget:
+
+```shell
+enzymeopt --config configs/baseline.toml --output outputs/baseline
+```
+
+For a quick development run, override the replicate count and seed:
+
+```shell
+enzymeopt --config configs/baseline.toml --output outputs/smoke --replicates 2 --seed 123
+```
+
+The equivalent repository wrapper is `python scripts/run_benchmark.py`. It uses
+the formal baseline configuration and writes to `outputs/baseline`. A non-empty
+output directory is rejected unless `--overwrite` is explicitly supplied.
+
+Each output directory contains:
+
+- `result.json`: lossless configuration, fit options, replicate records, and summaries;
+- `records.csv`: one row per strategy, budget, and replicate;
+- `summaries.csv`: flattened aggregate metrics;
+- `config.json`: the effective configuration after command-line overrides;
+- `metadata.json`: status, seed, schema, package/runtime versions, and record counts.
+
+Use `enzymeopt.results_io.load_monte_carlo_result` to restore `result.json` without
+losing types. CSV files are intended for inspection and analysis. Generated outputs
+are ignored by Git. The seed alone is insufficient to identify a run: retain the
+effective configuration, fit options, package version, strategy, budget, and
+replicate index recorded in the output.
+
+## Metrics and interpretation
+
+Relative error is `abs(estimate - truth) / truth`. CI width is the full upper-minus-
+lower width; relative CI width divides it by the true parameter. Error and width
+distributions report count, mean, median, quartiles, and 95th percentile over
+available completed fits. Failure and availability counts expose excluded values.
+Coverage is reported conditional on an available CI, alongside CI availability and
+the fraction covered over all attempts. Measurement count includes partial failed runs.
+
+See [MILESTONE9_REPORT.md](MILESTONE9_REPORT.md) for the initial 50-replicate
+comparison and [MILESTONE10_REPORT.md](MILESTONE10_REPORT.md) for the completed
+1,000-replicate formal baseline. The baseline output can be reproduced locally.
 
 ## Run a sequential experiment
 
@@ -72,6 +110,17 @@ strategy, replicate index, budget, and fit options. Noise streams are paired acr
 strategies for a given replicate and budget; random selection has a separate stream.
 Budgets have independent streams, so separate budget runs are not trajectory prefixes.
 The runner does not aggregate replicates or apply a precision-based stopping rule.
+
+## Mathematical and simulation assumptions
+
+The response model is `v(S) = Vmax*S/(KM+S) + epsilon`, with independent additive,
+homoscedastic Gaussian noise. Negative simulated rates are retained. Parameters are
+fit by nonlinear least squares in log-parameter space. Reported 95% intervals use a
+local Jacobian approximation and Student-t critical value; they may be unreliable for
+very small, rank-deficient, ill-conditioned, or boundary fits, in which case the
+software records the diagnostic and omits the interval. Random sampling is uniform
+in log concentration. D-optimal selection is sequential and local to the current
+parameter estimate and finite candidate grid.
 
 ## Local D-optimal selection
 
