@@ -75,9 +75,8 @@ available completed fits. Failure and availability counts expose excluded values
 Coverage is reported conditional on an available CI, alongside CI availability and
 the fraction covered over all attempts. Measurement count includes partial failed runs.
 
-See [MILESTONE9_REPORT.md](MILESTONE9_REPORT.md) for the initial 50-replicate
-comparison and [MILESTONE10_REPORT.md](MILESTONE10_REPORT.md) for the completed
-1,000-replicate formal baseline. The baseline output can be reproduced locally.
+The 1,000-replicate formal baseline can be reproduced locally from the committed
+configuration.
 
 ## Run a sequential experiment
 
@@ -155,7 +154,7 @@ reusing the system `pytest-of-*` directory. This avoids Windows permission error
 when tests are run under different accounts or execution environments. An explicit
 `--basetemp` still takes precedence. Pytest's shared cache is disabled, so
 last-failed/cache-based reruns are unavailable. Scratch directories are Git-ignored
-and retained for inspection; they can be removed after their test runs finish.
+and removed automatically after a normal test run.
 
 The response model is `v(S) = Vmax*S/(KM+S) + epsilon`, with independent additive,
 homoscedastic Gaussian noise. Negative simulated rates are retained. Parameters are

@@ -7,6 +7,7 @@ from pathlib import Path
 
 def test_suite_works_when_shared_pytest_directories_are_inaccessible():
     root = Path(__file__).resolve().parents[1]
+    existing_run_directories = set(root.glob(".pytest-run-*"))
     script = '''
 import os
 import pytest
@@ -25,6 +26,7 @@ raise SystemExit(pytest.main([
         capture_output=True, text=True,
     )
     assert result.returncode == 0, result.stdout + result.stderr
+    assert set(root.glob(".pytest-run-*")) == existing_run_directories
 
 
 def test_temporary_directory_is_writable(tmp_path):
