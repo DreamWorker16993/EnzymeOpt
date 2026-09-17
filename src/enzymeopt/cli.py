@@ -6,6 +6,7 @@ import argparse
 import re
 import sys
 from dataclasses import replace
+from datetime import date
 from pathlib import Path
 from typing import Sequence
 
@@ -54,7 +55,7 @@ def build_interactive_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-measurements", type=int, default=24)
     parser.add_argument("--noise-std", type=float, default=1.0, help="positive noise scale used for D-optimal ranking")
     parser.add_argument("--candidate-count", type=int, default=200)
-    destination = parser.add_mutually_exclusive_group(required=True)
+    destination = parser.add_mutually_exclusive_group()
     destination.add_argument(
         "--name",
         type=_experiment_name,
@@ -77,6 +78,20 @@ def _experiment_name(value: str) -> str:
     return value
 
 
+def default_experiment_output(
+    output_root: Path = Path("outputs"), *, experiment_date: date | None = None
+) -> Path:
+    """Return the first unused date-and-sequence result directory."""
+
+    date_label = (date.today() if experiment_date is None else experiment_date).isoformat()
+    sequence = 1
+    while True:
+        candidate = output_root / f"{date_label}-experiment-{sequence:03d}"
+        if not candidate.exists():
+            return candidate
+        sequence += 1
+
+
 def _check_interactive_output(parser: argparse.ArgumentParser, output: Path, overwrite: bool) -> None:
     if output.exists() and not output.is_dir():
         parser.error(f"result path is not a directory: {output}")
@@ -92,7 +107,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     if values and values[0] == "interactive":
         parser = build_interactive_parser()
         args = parser.parse_args(values[1:])
-        output = args.output if args.output is not None else Path("outputs") / args.name
+        if args.output is not None:
+            output = args.output
+        elif args.name is not None:
+            output = Path("outputs") / args.name
+        else:
+            output = default_experiment_output()
         _check_interactive_output(parser, output, args.overwrite)
         return run_interactive_session(
             InteractiveOptions(

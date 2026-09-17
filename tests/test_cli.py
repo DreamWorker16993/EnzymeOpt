@@ -1,9 +1,10 @@
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
 
-from enzymeopt.cli import load_toml_config, main
+from enzymeopt.cli import default_experiment_output, load_toml_config, main
 from enzymeopt.results_io import load_monte_carlo_result
 
 
@@ -87,6 +88,29 @@ def test_interactive_name_creates_its_own_result_directory(monkeypatch) -> None:
     monkeypatch.setattr("enzymeopt.cli.run_interactive_session", fake_session)
     assert main(["interactive", "--name", "enzyme_run_01"]) == 0
     assert seen["options"].output == Path("outputs/enzyme_run_01")
+
+
+def test_interactive_without_name_uses_date_and_next_experiment_number(tmp_path) -> None:
+    existing = tmp_path / "2026-09-17-experiment-001"
+    existing.mkdir()
+
+    output = default_experiment_output(tmp_path, experiment_date=date(2026, 9, 17))
+
+    assert output == tmp_path / "2026-09-17-experiment-002"
+
+
+def test_interactive_without_destination_uses_generated_output(monkeypatch) -> None:
+    seen = {}
+    expected = Path("outputs/2026-09-17-experiment-007")
+
+    monkeypatch.setattr("enzymeopt.cli.default_experiment_output", lambda: expected)
+    monkeypatch.setattr(
+        "enzymeopt.cli.run_interactive_session",
+        lambda options: seen.setdefault("output", options.output) and 0,
+    )
+
+    assert main(["interactive"]) == 0
+    assert seen["output"] == expected
 
 
 def test_interactive_rejects_duplicate_name_before_session(tmp_path, monkeypatch) -> None:

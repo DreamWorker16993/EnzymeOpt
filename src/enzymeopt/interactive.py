@@ -155,6 +155,7 @@ def run_interactive_session(
     session = InteractiveSession(options)
     output_fn("Enter `concentration rate` pairs. Commands: report, help, quit.")
     output_fn(f"Allowed concentration range: {options.substrate_min:g} to {options.substrate_max:g}.")
+    output_fn(f"Results will be saved to: {options.output}")
     while True:
         try:
             line = input_fn("measurement> ").strip()

@@ -64,6 +64,7 @@ def test_interactive_dialogue_writes_report(tmp_path) -> None:
     status = run_interactive_session(options, input_fn=lambda _: next(values), output_fn=messages.append)
 
     assert status == 0
+    assert any("Results will be saved to" in message for message in messages)
     assert any("Suggested next concentration" in message for message in messages)
     assert any("Vmax estimate" in message for message in messages)
     assert any("KM standard error" in message for message in messages)
