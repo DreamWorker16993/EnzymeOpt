@@ -131,6 +131,13 @@ the fitted curve. Enter `help` for a reminder or `quit` to end without a report.
 
 ## Mathematical and simulation assumptions
 
+Test runs allocate a unique `.pytest-run-*` directory in the project instead of
+reusing the system `pytest-of-*` directory. This avoids Windows permission errors
+when tests are run under different accounts or execution environments. An explicit
+`--basetemp` still takes precedence. Pytest's shared cache is disabled, so
+last-failed/cache-based reruns are unavailable. Scratch directories are Git-ignored
+and retained for inspection; they can be removed after their test runs finish.
+
 The response model is `v(S) = Vmax*S/(KM+S) + epsilon`, with independent additive,
 homoscedastic Gaussian noise. Negative simulated rates are retained. Parameters are
 fit by nonlinear least squares in log-parameter space. Reported 95% intervals use a
