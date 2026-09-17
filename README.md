@@ -111,6 +111,24 @@ strategies for a given replicate and budget; random selection has a separate str
 Budgets have independent streams, so separate budget runs are not trajectory prefixes.
 The runner does not aggregate replicates or apply a precision-based stopping rule.
 
+## Use real enzyme measurements interactively
+
+Use this command when you have measured initial rates from a real enzyme assay.
+Choose the concentration range that is feasible for your assay; all entered concentrations
+must be inside that range. The rate values must use one consistent unit.
+
+```powershell
+enzymeopt interactive --min-concentration 0.05 --max-concentration 20 --output outputs/real-enzyme
+```
+
+Enter each measured pair as `concentration rate`, for example `0.1 0.074`.
+After the third pair, EnzymeOpt refits the Michaelis–Menten model and prints a locally
+D-optimal next concentration. Measure at that concentration, enter the new pair, and
+repeat. Enter `report` when you want to stop: it prints the `Vmax` and `KM` estimates
+and writes `report.md`, `report.json`, `raw_data.csv`, `fit_curve.csv`, and
+`fit_curve.png` to the output directory. The plot overlays your raw measurements with
+the fitted curve. Enter `help` for a reminder or `quit` to end without a report.
+
 ## Mathematical and simulation assumptions
 
 The response model is `v(S) = Vmax*S/(KM+S) + epsilon`, with independent additive,

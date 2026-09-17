@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from dataclasses import replace
 from pathlib import Path
 from typing import Sequence
@@ -13,6 +14,7 @@ except ModuleNotFoundError:  # pragma: no cover - exercised on Python 3.10
     import tomli as tomllib
 
 from enzymeopt.config import ExperimentConfig
+from enzymeopt.interactive import InteractiveOptions, run_interactive_session
 from enzymeopt.monte_carlo import run_monte_carlo
 from enzymeopt.results_io import save_monte_carlo_result
 
@@ -41,8 +43,37 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def build_interactive_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        prog="enzymeopt interactive",
+        description="Fit real Michaelis-Menten measurements and suggest the next concentration.",
+    )
+    parser.add_argument("--min-concentration", type=float, default=0.05)
+    parser.add_argument("--max-concentration", type=float, default=20.0)
+    parser.add_argument("--max-measurements", type=int, default=24)
+    parser.add_argument("--noise-std", type=float, default=1.0, help="positive noise scale used for D-optimal ranking")
+    parser.add_argument("--candidate-count", type=int, default=200)
+    parser.add_argument("--output", type=Path, default=Path("outputs/interactive-report"))
+    parser.add_argument("--overwrite", action="store_true")
+    return parser
+
+
 def main(argv: Sequence[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    values = list(sys.argv[1:] if argv is None else argv)
+    if values and values[0] == "interactive":
+        args = build_interactive_parser().parse_args(values[1:])
+        return run_interactive_session(
+            InteractiveOptions(
+                substrate_min=args.min_concentration,
+                substrate_max=args.max_concentration,
+                measurement_budget=args.max_measurements,
+                noise_std=args.noise_std,
+                candidate_count=args.candidate_count,
+                output=args.output,
+                overwrite=args.overwrite,
+            )
+        )
+    args = build_parser().parse_args(values)
     config = load_toml_config(args.config)
     if args.seed is not None:
         config = replace(config, seed=args.seed)

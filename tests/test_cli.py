@@ -56,3 +56,21 @@ def test_cli_rejects_existing_output_before_computation(tmp_path, monkeypatch):
     with pytest.raises(FileExistsError):
         main(['--config', 'configs/baseline.toml', '--output', str(tmp_path)])
     assert (tmp_path / 'existing.txt').read_text() == 'keep'
+
+
+def test_interactive_command_builds_real_data_options(tmp_path, monkeypatch) -> None:
+    seen = {}
+
+    def fake_session(options):
+        seen["options"] = options
+        return 0
+
+    monkeypatch.setattr("enzymeopt.cli.run_interactive_session", fake_session)
+    status = main([
+        "interactive", "--min-concentration", "0.1", "--max-concentration", "12",
+        "--max-measurements", "9", "--noise-std", "0.2", "--output", str(tmp_path / "real"),
+    ])
+
+    assert status == 0
+    assert seen["options"].substrate_min == 0.1
+    assert seen["options"].measurement_budget == 9
