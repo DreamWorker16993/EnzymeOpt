@@ -117,9 +117,17 @@ Use this command when you have measured initial rates from a real enzyme assay.
 Choose the concentration range that is feasible for your assay; all entered concentrations
 must be inside that range. The rate values must use one consistent unit.
 
+Give every experiment a unique name. EnzymeOpt creates a separate folder at
+`outputs/NAME` and checks that the name has not already been used before asking for
+measurements.
+
 ```powershell
-enzymeopt interactive --min-concentration 0.05 --max-concentration 20 --output outputs/real-enzyme
+enzymeopt interactive --name real-enzyme-01 --min-concentration 0.05 --max-concentration 20
 ```
+
+Names may contain letters, numbers, hyphens, and underscores. To store results
+somewhere else, use `--output PATH` instead of `--name`. Reusing a non-empty result
+folder requires an explicit `--overwrite`.
 
 Enter each measured pair as `concentration rate`, for example `0.1 0.074`.
 After the third pair, EnzymeOpt refits the Michaelis–Menten model and prints a locally

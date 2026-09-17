@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import pytest
 
@@ -74,3 +75,34 @@ def test_interactive_command_builds_real_data_options(tmp_path, monkeypatch) -> 
     assert status == 0
     assert seen["options"].substrate_min == 0.1
     assert seen["options"].measurement_budget == 9
+
+
+def test_interactive_name_creates_its_own_result_directory(monkeypatch) -> None:
+    seen = {}
+
+    def fake_session(options):
+        seen["options"] = options
+        return 0
+
+    monkeypatch.setattr("enzymeopt.cli.run_interactive_session", fake_session)
+    assert main(["interactive", "--name", "enzyme_run_01"]) == 0
+    assert seen["options"].output == Path("outputs/enzyme_run_01")
+
+
+def test_interactive_rejects_duplicate_name_before_session(tmp_path, monkeypatch) -> None:
+    output = tmp_path / "used-name"
+    output.mkdir()
+    (output / "report.json").write_text("{}", encoding="utf-8")
+
+    def unexpected(*args, **kwargs):
+        pytest.fail("interactive session should not start for a used result name")
+
+    monkeypatch.setattr("enzymeopt.cli.run_interactive_session", unexpected)
+    with pytest.raises(SystemExit, match="2"):
+        main(["interactive", "--output", str(output)])
+
+
+@pytest.mark.parametrize("name", ["../escape", "has spaces", "name.with.dot", ""])
+def test_interactive_rejects_unsafe_experiment_names(name) -> None:
+    with pytest.raises(SystemExit, match="2"):
+        main(["interactive", "--name", name])

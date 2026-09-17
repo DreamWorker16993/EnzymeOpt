@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import replace
 from pathlib import Path
@@ -53,15 +54,46 @@ def build_interactive_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-measurements", type=int, default=24)
     parser.add_argument("--noise-std", type=float, default=1.0, help="positive noise scale used for D-optimal ranking")
     parser.add_argument("--candidate-count", type=int, default=200)
-    parser.add_argument("--output", type=Path, default=Path("outputs/interactive-report"))
+    destination = parser.add_mutually_exclusive_group(required=True)
+    destination.add_argument(
+        "--name",
+        type=_experiment_name,
+        help="experiment name; results are saved under outputs/NAME",
+    )
+    destination.add_argument(
+        "--output",
+        type=Path,
+        help="explicit result directory (advanced alternative to --name)",
+    )
     parser.add_argument("--overwrite", action="store_true")
     return parser
+
+
+def _experiment_name(value: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", value):
+        raise argparse.ArgumentTypeError(
+            "name must be 1-80 letters, numbers, hyphens, or underscores"
+        )
+    return value
+
+
+def _check_interactive_output(parser: argparse.ArgumentParser, output: Path, overwrite: bool) -> None:
+    if output.exists() and not output.is_dir():
+        parser.error(f"result path is not a directory: {output}")
+    if output.exists() and any(output.iterdir()) and not overwrite:
+        parser.error(
+            f"experiment result already exists: {output}; choose another --name "
+            "or explicitly use --overwrite"
+        )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     values = list(sys.argv[1:] if argv is None else argv)
     if values and values[0] == "interactive":
-        args = build_interactive_parser().parse_args(values[1:])
+        parser = build_interactive_parser()
+        args = parser.parse_args(values[1:])
+        output = args.output if args.output is not None else Path("outputs") / args.name
+        _check_interactive_output(parser, output, args.overwrite)
         return run_interactive_session(
             InteractiveOptions(
                 substrate_min=args.min_concentration,
@@ -69,7 +101,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 measurement_budget=args.max_measurements,
                 noise_std=args.noise_std,
                 candidate_count=args.candidate_count,
-                output=args.output,
+                output=output,
                 overwrite=args.overwrite,
             )
         )
