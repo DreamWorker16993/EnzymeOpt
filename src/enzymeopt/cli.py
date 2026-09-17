@@ -71,6 +71,11 @@ def build_interactive_parser() -> argparse.ArgumentParser:
 
 
 def _experiment_name(value: str) -> str:
+    reserved_names = {"CON", "PRN", "AUX", "NUL"} | {
+        f"{prefix}{number}" for prefix in ("COM", "LPT") for number in range(1, 10)
+    }
+    if value.upper() in reserved_names:
+        raise argparse.ArgumentTypeError("name is reserved by Windows; choose another experiment name")
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,79}", value):
         raise argparse.ArgumentTypeError(
             "name must be 1-80 letters, numbers, hyphens, or underscores"

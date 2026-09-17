@@ -126,7 +126,7 @@ def test_interactive_rejects_duplicate_name_before_session(tmp_path, monkeypatch
         main(["interactive", "--output", str(output)])
 
 
-@pytest.mark.parametrize("name", ["../escape", "has spaces", "name.with.dot", ""])
+@pytest.mark.parametrize("name", ["../escape", "has spaces", "name.with.dot", "", "CON", "nul", "Aux", "PRN", "COM1", "lpt9"])
 def test_interactive_rejects_unsafe_experiment_names(name) -> None:
     with pytest.raises(SystemExit, match="2"):
         main(["interactive", "--name", name])
