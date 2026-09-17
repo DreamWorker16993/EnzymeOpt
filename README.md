@@ -165,6 +165,12 @@ software records the diagnostic and omits the interval. Random sampling is unifo
 in log concentration. D-optimal selection is sequential and local to the current
 parameter estimate and finite candidate grid.
 
+This program is not valid for assays with substrate inhibition. In that setting,
+the rate can decrease at high substrate concentration, which the current
+Michaelis–Menten model cannot represent; KM, Vmax, confidence intervals, and
+recommended concentrations may therefore be misleading. Use a substrate-inhibition
+kinetic model before applying this workflow to such data.
+
 ## Local D-optimal selection
 
 For independent Gaussian noise with standard deviation `sigma`, the information
