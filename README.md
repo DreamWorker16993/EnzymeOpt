@@ -9,7 +9,7 @@ The first release provides:
 - random, log-spaced, and sequential locally D-optimal concentration designs;
 - Monte Carlo comparisons using parameter error, confidence-interval quality, and measurement count.
 
-Web interfaces and neural-network models are outside the first-release scope. See [PROJECT_PLAN.md](PROJECT_PLAN.md) for the complete milestone plan and mathematical assumptions.
+Web interfaces and neural-network models are outside the first-release scope.
 
 ## Requirements
 
